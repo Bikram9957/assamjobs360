@@ -1,10 +1,8 @@
-# TODO - Admin Forget Password (Security Focused)
+# TODO
 
-- [x] Step 1: Create DB migration/ensure-table for password reset tokens in `lib/db.php`.
-- [x] Step 2: Add secure reset token helpers (generate/verify) in `lib/security.php`.
-- [x] Step 3: Add UI+logic page `admin/forgot_password.php` (username-based, token displayed once, generic messages, rate limit, CSRF).
-- [x] Step 4: Add UI+logic page `admin/reset_password.php` (selector+token+new password, strict validation, rate limit, CSRF).
-- [x] Step 5: Update `admin/login.php` to include “Forgot password?” link.
-- [ ] Step 6: Manual security testing checklist (enumeration prevention, rate limits, token reuse, expiry, CSRF).
-
+- [ ] Implement forgot-password email sending for admins
+- [ ] Add mailer helper (PHP mail / PHPMailer) and config entries
+- [ ] Update admin/forgot_password.php to send reset link to admins.email and stop displaying generated link
+- [ ] Update admin/register.php to capture admins.email and save into admins table
+- [ ] Quick verification: ensure reset link still works with selector+token
 

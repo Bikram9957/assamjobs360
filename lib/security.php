@@ -193,7 +193,68 @@ function aj360_admin_password_reset_verify(mysqli $conn, string $selector, strin
     return $row;
 }
 
+function aj360_send_email(string $to, string $subject, string $htmlBody, ?string $textBody = null): bool {
+    $to = trim($to);
+    if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) return false;
+
+    $cfg = require __DIR__ . '/../config/config.php';
+
+    // PHPMailer (optional). If not installed, fallback to PHP mail().
+    $usePhpMailer = (bool)($cfg['MAIL_USE_PHPMailer'] ?? false);
+    if ($usePhpMailer) {
+        try {
+            // Use PHPMailer if available in vendor
+            $vendorAutoload = __DIR__ . '/../vendor/autoload.php';
+            if (is_file($vendorAutoload)) {
+                require_once $vendorAutoload;
+            }
+
+            if (class_exists('PHPMailer\\PHPMailer\\PHPMailer')) {
+                $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+                $mail->isSMTP();
+                $mail->Host = (string)($cfg['MAIL_SMTP_HOST'] ?? 'localhost');
+                $mail->SMTPAuth = (bool)($cfg['MAIL_SMTP_AUTH'] ?? false);
+                $mail->Username = (string)($cfg['MAIL_SMTP_USER'] ?? '');
+                $mail->Password = (string)($cfg['MAIL_SMTP_PASS'] ?? '');
+                $mail->Port = (int)($cfg['MAIL_SMTP_PORT'] ?? 587);
+                $encryption = strtolower((string)($cfg['MAIL_SMTP_ENCRYPTION'] ?? 'tls'));
+                if ($encryption === 'ssl') $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
+                else $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+
+                $fromEmail = (string)($cfg['MAIL_FROM_EMAIL'] ?? 'no-reply@' . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
+                $fromName = (string)($cfg['MAIL_FROM_NAME'] ?? 'AssamJobs360');
+                $mail->setFrom($fromEmail, $fromName);
+                $mail->addAddress($to);
+
+                $mail->Subject = $subject;
+                $mail->isHTML(true);
+                $mail->Body = $htmlBody;
+                $mail->AltBody = $textBody ?? strip_tags($htmlBody);
+
+                return (bool)$mail->send();
+            }
+        } catch (Throwable $e) {
+            // Fallback to mail()
+        }
+    }
+
+    $fromEmail = (string)($cfg['MAIL_FROM_EMAIL'] ?? 'no-reply@' . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
+    $fromName = (string)($cfg['MAIL_FROM_NAME'] ?? 'AssamJobs360');
+
+    $headers = [];
+    $headers[] = 'MIME-Version: 1.0';
+    $headers[] = 'Content-type: text/html; charset=utf-8';
+    $headers[] = 'From: ' . $fromName . ' <' . $fromEmail . '>';
+
+    // mail() returns bool; no exception
+    $textBody = $textBody ?? strip_tags($htmlBody);
+    $subjectSafe = $subject;
+
+    return mail($to, $subjectSafe, $htmlBody, implode("\r\n", $headers));
+}
+
 function aj360_admin_password_reset_consume(mysqli $conn, int $resetId, int $adminId, string $newPassword): bool {
+
     $hash = password_hash($newPassword, PASSWORD_DEFAULT);
 
     $conn->begin_transaction();

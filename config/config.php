@@ -23,6 +23,23 @@ return [
     // Admin login brute-force protection
     'ADMIN_LOGIN_RATE_LIMIT_MAX_REQUESTS' => 10, // attempts per IP+username
     'ADMIN_LOGIN_RATE_LIMIT_WINDOW_SECONDS' => 900, // lock window (15 minutes)
+
+    // Mailer (for password reset links)
+    // Set MAIL_USE_PHPMailer=true if you installed PHPMailer via composer.
+    'MAIL_USE_PHPMailer' => false,
+    'MAIL_FROM_EMAIL' => 'no-reply@' . ($_SERVER['HTTP_HOST'] ?? 'localhost'),
+    'MAIL_FROM_NAME' => 'AssamJobs360',
+
+    // SMTP (only used when MAIL_USE_PHPMailer=true)
+    'MAIL_SMTP_HOST' => 'localhost',
+    'MAIL_SMTP_AUTH' => false,
+    'MAIL_SMTP_USER' => '',
+    'MAIL_SMTP_PASS' => '',
+    'MAIL_SMTP_PORT' => 587,
+    'MAIL_SMTP_ENCRYPTION' => 'tls',
 ];
+
+
+
 
 

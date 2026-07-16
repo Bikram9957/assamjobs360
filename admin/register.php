@@ -42,8 +42,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $error === '') {
         if ($isPlaceholderSeed) {
             $mysqli->query("DELETE FROM admins WHERE username = 'admin'");
         }
-        $stmt = $mysqli->prepare('INSERT INTO admins (username, password_hash) VALUES (?, ?)');
-        $stmt->bind_param('ss', $username, $hash);
+        $email = trim((string)($_POST['email'] ?? ''));
+        if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $error = 'Enter a valid email address.';
+        } else {
+            $stmt = $mysqli->prepare('INSERT INTO admins (username, password_hash, email) VALUES (?, ?, ?)');
+            $stmt->bind_param('sss', $username, $hash, $email === '' ? null : $email);
+        }
+
         if ($stmt->execute()) {
             if (!$isLoggedInAdmin)
                 $_SESSION['aj360_admin_id'] = (int) $mysqli->insert_id;
@@ -77,6 +83,8 @@ $csrf = aj360_csrf_token();
                     <form method="post"><input type="hidden" name="csrf" value="<?= aj360_h($csrf) ?>"><label
                             class="form-label small">Username</label><input name="username" class="form-control" required
                             maxlength="50" autocomplete="username"><label
+                            class="form-label small mt-3">Email (for password reset)</label><input name="email" type="email"
+                            class="form-control" autocomplete="email" placeholder="you@example.com"><label
                             class="form-label small mt-3">Password</label><input name="password" type="password"
                             class="form-control" required minlength="8" autocomplete="new-password"><label
                             class="form-label small mt-3">Confirm password</label><input name="confirm_password"
@@ -84,6 +92,7 @@ $csrf = aj360_csrf_token();
                         <div class="d-grid mt-4"><button class="btn btn-search" type="submit">Create Admin Account</button>
                         </div>
                     </form><?php endif; ?>
+
             </div>
         </section>
     </main>

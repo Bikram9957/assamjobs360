@@ -17,9 +17,11 @@ $mysqli = db();
 $error = '';
 $success = '';
 $generatedLink = '';
+$emailSent = false;
 
 $cfg = require __DIR__ . '/../config/config.php';
 $ttl = (int)($cfg['ADMIN_PASSWORD_RESET_TTL_SECONDS'] ?? 1800); // 30 mins
+
 $rateMax = (int)($cfg['ADMIN_FORGOT_PASSWORD_RATE_LIMIT_MAX_REQUESTS'] ?? 5);
 $rateWindow = (int)($cfg['ADMIN_FORGOT_PASSWORD_RATE_LIMIT_WINDOW_SECONDS'] ?? 3600);
 
@@ -32,29 +34,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!preg_match('/^[A-Za-z0-9_.-]{3,50}$/', $username)) {
         $error = 'Enter a valid username.';
     } else {
+
         $bucket = 'admin-forgot-password|' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown') . '|' . strtolower($username);
         if (!aj360_consume_rate_limit($bucket, $rateMax, $rateWindow)) {
             $error = 'Too many requests. Please try again after some time.';
         } else {
-            // Always return generic message; only show the reset token/link if admin exists.
-            $stmt = $mysqli->prepare('SELECT id FROM admins WHERE username=? LIMIT 1');
+            // Always return generic message; only send reset link if admin exists.
+            $stmt = $mysqli->prepare('SELECT id, email FROM admins WHERE username=? LIMIT 1');
+
             $stmt->bind_param('s', $username);
             $stmt->execute();
             $admin = $stmt->get_result()->fetch_assoc();
 
-            $success = 'If an account with that username exists, you can reset your password using the provided code/link.';
+            $success = 'If an account with that username exists, a password reset link will be sent to the registered email.';
+
 
             if ($admin) {
                 $reset = aj360_admin_password_reset_create_record($mysqli, (int)$admin['id'], $ttl);
                 $selector = $reset['selector'];
                 $token = $reset['token'];
+
                 $generatedLink = aj360_url('admin/reset_password.php', [
                     'selector' => $selector,
                     'token' => $token,
                 ]);
 
-                // Display token/link only once immediately after generation.
+                $email = (string)($admin['email'] ?? '');
+                if ($email !== '') {
+                    $subject = 'AssamJobs360 Admin Password Reset';
+                    $htmlBody = 'We received a request to reset your admin password.\n\n'
+                        . 'Click the link below to set a new password (one-time):<br><br>'
+                        . '<a href="' . aj360_h($generatedLink) . '">' . aj360_h($generatedLink) . '</a><br><br>'
+                        . 'This link will expire in ' . (int)($ttl / 60) . ' minutes.';
+                    aj360_send_email($email, $subject, $htmlBody);
+                    $emailSent = true;
+                }
             }
+
         }
     }
 }
@@ -87,15 +103,14 @@ $csrf = aj360_csrf_token();
           <div class="alert alert-info small"><?= aj360_h($success) ?></div>
         <?php endif; ?>
 
-        <?php if ($generatedLink !== ''): ?>
-          <div class="alert alert-success small">
-            <div class="fw-bold mb-2">Your reset link (one-time):</div>
-            <div style="word-break:break-all"> 
-              <a href="<?= aj360_h($generatedLink) ?>" target="_blank" rel="noopener noreferrer">Reset password</a>
-            </div>
-            <div class="text-muted mt-2" style="font-size:12px">Use it within <?= (int)($ttl/60) ?> minutes.</div>
-          </div>
+        <?php if ($emailSent): ?>
+          <div class="alert alert-success small">If the email exists, a reset link has been sent.</div>
         <?php endif; ?>
+
+
+
+
+
 
         <form method="post" class="mt-3">
           <input type="hidden" name="csrf" value="<?= aj360_h($csrf) ?>" />
