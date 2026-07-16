@@ -35,8 +35,32 @@ function db(): mysqli {
     aj360_ensure_job_detail_columns($conn);
     aj360_ensure_admin_profile_columns($conn);
     aj360_ensure_admin_login_log_table($conn);
+    aj360_ensure_admin_password_reset_table($conn);
     return $conn;
 }
+
+function aj360_ensure_admin_password_reset_table(mysqli $conn): void {
+    static $checked = false;
+    if ($checked) return;
+    $checked = true;
+
+    // Stores selector publicly + only hashed token in DB (like industry standard).
+    // One-time use via used_at.
+    $conn->query('CREATE TABLE IF NOT EXISTS admin_password_resets (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        admin_id INT NOT NULL,
+        selector VARCHAR(20) NOT NULL,
+        token_hash CHAR(64) NOT NULL,
+        expires_at DATETIME NOT NULL,
+        used_at DATETIME NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_admin_password_resets_selector (selector),
+        INDEX idx_admin_password_resets_admin_id (admin_id),
+        INDEX idx_admin_password_resets_expires_at (expires_at),
+        FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+}
+
 
 function aj360_ensure_admin_login_log_table(mysqli $conn): void {
     static $checked = false;

@@ -76,10 +76,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <label class="form-label mt-3">Password</label><input name="password" type="password" class="form-control" placeholder="Enter your password" autocomplete="current-password" required>
         <div class="d-grid mt-4"><button class="btn auth-login-btn">Sign In to Dashboard <span>→</span></button></div>
       </form>
-      <div class="auth-help"><span>Administrator access only</span><a href="<?= aj360_h(aj360_url('admin/register.php')) ?>">Create admin account</a></div>
+      <div class="auth-help"><span>Administrator access only</span><a href="<?= aj360_h(aj360_url('admin/register.php')) ?>">Create admin account</a> <a class="ms-2" href="<?= aj360_h(aj360_url('admin/forgot_password.php')) ?>">Forgot password?</a></div>
       </div>
     </section>
   </main>
 </body>
 </html>
+
+
 

@@ -5,6 +5,19 @@ function aj360_h(string $s): string {
     return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+/** Harden PHP session cookies as early as possible (call before any session_start). */
+function aj360_harden_sessions(): void {
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+        session_set_cookie_params([
+            'httponly' => true,
+            'samesite' => 'Lax',
+            'secure' => $secure,
+        ]);
+    }
+}
+
+
 function aj360_safe_url(?string $url): string {
     $url = trim((string)($url ?? ''));
     if ($url === '') return '';
@@ -138,11 +151,75 @@ function aj360_enforce_public_rate_limit(bool $jsonResponse = false): void {
 }
 
 
-function aj360_require_login(): void {
-    if (session_status() !== PHP_SESSION_ACTIVE) session_start();
-    if (empty($_SESSION['aj360_user_id'])) {
-        header('Location: ' . aj360_url('login.php'));
-        exit;
+
+
+function aj360_admin_password_reset_create_record(mysqli $conn, int $adminId, int $ttlSeconds): array {
+    // selector/token pattern:
+    // - selector is stored in DB in clear
+    // - token is never stored in clear; only SHA-256(token)
+    $selector = bin2hex(random_bytes(10)); // 20 chars
+    $token = bin2hex(random_bytes(32));    // 64 chars (plain shown once to admin)
+    $tokenHash = hash('sha256', $token);
+    $expiresAt = (new DateTimeImmutable('now', new DateTimeZone('UTC')))
+        ->modify(sprintf('+%d seconds', max(60, $ttlSeconds)))
+        ->format('Y-m-d H:i:s');
+
+    $stmt = $conn->prepare('INSERT INTO admin_password_resets (admin_id, selector, token_hash, expires_at) VALUES (?, ?, ?, ?)');
+    $stmt->bind_param('isss', $adminId, $selector, $tokenHash, $expiresAt);
+    $stmt->execute();
+
+    return ['selector' => $selector, 'token' => $token, 'expires_at' => $expiresAt];
+}
+
+function aj360_admin_password_reset_verify(mysqli $conn, string $selector, string $token): ?array {
+    $selector = trim($selector);
+    $token = trim($token);
+    if ($selector === '' || $token === '') return null;
+
+    $tokenHash = hash('sha256', $token);
+    $stmt = $conn->prepare('SELECT id, admin_id, selector, token_hash, expires_at, used_at FROM admin_password_resets WHERE selector=? LIMIT 1');
+    $stmt->bind_param('s', $selector);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    if (!$row) return null;
+
+    if (!hash_equals((string)$row['token_hash'], $tokenHash)) return null;
+    if (!empty($row['used_at'])) return null;
+
+    // Ensure not expired (DB stores datetime in UTC-ish format; compare as string is risky -> use timestamp)
+    $expiresTs = strtotime((string)$row['expires_at']);
+    if ($expiresTs === false || time() > $expiresTs) return null;
+
+    return $row;
+}
+
+function aj360_admin_password_reset_consume(mysqli $conn, int $resetId, int $adminId, string $newPassword): bool {
+    $hash = password_hash($newPassword, PASSWORD_DEFAULT);
+
+    $conn->begin_transaction();
+    try {
+        $stmt1 = $conn->prepare('UPDATE admin_password_resets SET used_at = UTC_TIMESTAMP() WHERE id=? AND admin_id=? AND used_at IS NULL');
+        $stmt1->bind_param('ii', $resetId, $adminId);
+        $stmt1->execute();
+        if ($stmt1->affected_rows !== 1) {
+            $conn->rollback();
+            return false;
+        }
+
+        $stmt2 = $conn->prepare('UPDATE admins SET password_hash=? WHERE id=? LIMIT 1');
+        $stmt2->bind_param('si', $hash, $adminId);
+        $stmt2->execute();
+
+        $conn->commit();
+        return true;
+    } catch (Throwable $e) {
+        $conn->rollback();
+        return false;
     }
 }
+
+
+
+
+
 
