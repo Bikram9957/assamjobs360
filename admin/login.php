@@ -21,23 +21,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim((string)($_POST['username'] ?? ''));
     $password = (string)($_POST['password'] ?? '');
 
-    $mysqli = db();
-    $stmt = $mysqli->prepare('SELECT id, username, password_hash FROM admins WHERE username=? LIMIT 1');
-    $stmt->bind_param('s', $username);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    $admin = $res->fetch_assoc();
+    // Admin brute-force protection (rate limit by IP + username)
+    $rateCfg = require __DIR__ . '/../config/config.php';
+    $lockMax = (int)($rateCfg['ADMIN_LOGIN_RATE_LIMIT_MAX_REQUESTS'] ?? 10);
+    $lockWindow = (int)($rateCfg['ADMIN_LOGIN_RATE_LIMIT_WINDOW_SECONDS'] ?? 900); // 15 mins default
+    $bucket = 'admin-login|' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown') . '|' . strtolower($username);
+    if (!aj360_consume_rate_limit($bucket, $lockMax, $lockWindow)) {
+        $error = 'Too many login attempts. Please try again after 15 minutes.';
+    } else {
+        $mysqli = db();
 
-    if ($admin && password_verify($password, $admin['password_hash'])) {
-        $_SESSION['aj360_admin_id'] = (int)$admin['id'];
-        $_SESSION['aj360_admin_last_activity'] = time();
-        aj360_log_admin_login($mysqli, (int)$admin['id']);
-        header('Location: ' . aj360_url('admin/'));
-        exit;
+        $stmt = $mysqli->prepare('SELECT id, username, password_hash FROM admins WHERE username=? LIMIT 1');
+        $stmt->bind_param('s', $username);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $admin = $res->fetch_assoc();
+
+        if ($admin && password_verify($password, $admin['password_hash'])) {
+            $_SESSION['aj360_admin_id'] = (int)$admin['id'];
+            $_SESSION['aj360_admin_last_activity'] = time();
+            aj360_log_admin_login($mysqli, (int)$admin['id']);
+            header('Location: ' . aj360_url('admin/'));
+            exit;
+        }
+
+        $error = 'Invalid credentials';
     }
-
-    $error = 'Invalid credentials';
 }
+
+
 
 ?><!doctype html>
 <html lang="en">

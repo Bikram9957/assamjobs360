@@ -19,5 +19,10 @@ return [
     'ADMIN_SESSION_TIMEOUT_SECONDS' => 3600,
     'ADMIN_SIGNUP_RATE_LIMIT_MAX' => 5,
     'ADMIN_SIGNUP_RATE_LIMIT_WINDOW_SECONDS' => 3600,
+
+    // Admin login brute-force protection
+    'ADMIN_LOGIN_RATE_LIMIT_MAX_REQUESTS' => 10, // attempts per IP+username
+    'ADMIN_LOGIN_RATE_LIMIT_WINDOW_SECONDS' => 900, // lock window (15 minutes)
 ];
+
 
