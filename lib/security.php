@@ -5,6 +5,15 @@ function aj360_h(string $s): string {
     return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+function aj360_safe_url(?string $url): string {
+    $url = trim((string)($url ?? ''));
+    if ($url === '') return '';
+    // Allow only http/https to prevent javascript/data URL injection.
+    if (!preg_match('#^https?://#i', $url)) return '';
+    return $url;
+}
+
+
 /** Return the application's installation path without assuming a folder name. */
 function aj360_base_path(): string {
     $script = str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? '/index.php'));

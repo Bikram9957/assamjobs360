@@ -18,8 +18,21 @@ $safeSchemaJson = json_encode($schemaData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HE
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="index,follow" />
 
+  <?php
+  // Security headers (defense-in-depth). Safe to set here because this is the entry template.
+  if (!headers_sent()) {
+      header("X-Frame-Options: DENY");
+      header("X-Content-Type-Options: nosniff");
+      header("Referrer-Policy: same-origin");
+      header("Permissions-Policy: geolocation=(), microphone=(), camera=()");
+      // CSP: allow self + inline JSON-LD in this template.
+      header("Content-Security-Policy: default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; upgrade-insecure-requests");
+  }
+?>
+
   <title><?= isset($metaTitle) ? htmlspecialchars($metaTitle, ENT_QUOTES, 'UTF-8') : 'AssamJobs360' ?></title>
   <meta name="description" content="<?= isset($metaDescription) ? htmlspecialchars($metaDescription, ENT_QUOTES, 'UTF-8') : 'Assam government job portal and mock tests.' ?>" />
+
 
   <link rel="canonical" href="<?= htmlspecialchars($canonicalUrl, ENT_QUOTES, 'UTF-8') ?>" />
 

@@ -47,15 +47,20 @@ if (!$job) {
     echo '    <div class="col-12 col-md-5">';
     echo '      <div class="card rounded-4 shadow-sm">';
     echo '        <div class="card-body d-grid gap-2">';
-    if (!empty($job['apply_url'])) {
-        echo '  <a class="btn btn-primary" target="_blank" rel="noopener" href="'.aj360_h($job['apply_url']).'">Apply Online (Official)</a>';
+    $applyUrl = aj360_safe_url($job['apply_url'] ?? '');
+    $pdfUrl = aj360_safe_url($job['notification_pdf_url'] ?? '');
+    $siteUrl = aj360_safe_url($job['official_website_url'] ?? '');
+
+    if ($applyUrl !== '') {
+        echo '  <a class="btn btn-primary" target="_blank" rel="noopener noreferrer" href="'.aj360_h($applyUrl).'">Apply Online (Official)</a>';
     }
-    if (!empty($job['notification_pdf_url'])) {
-        echo '  <a class="btn btn-outline-primary" target="_blank" rel="noopener" href="'.aj360_h($job['notification_pdf_url']).'">Official Notification PDF</a>';
+    if ($pdfUrl !== '') {
+        echo '  <a class="btn btn-outline-primary" target="_blank" rel="noopener noreferrer" href="'.aj360_h($pdfUrl).'">Official Notification PDF</a>';
     }
-    if (!empty($job['official_website_url'])) {
-        echo '  <a class="btn btn-outline-secondary" target="_blank" rel="noopener" href="'.aj360_h($job['official_website_url']).'">Official Website</a>';
+    if ($siteUrl !== '') {
+        echo '  <a class="btn btn-outline-secondary" target="_blank" rel="noopener noreferrer" href="'.aj360_h($siteUrl).'">Official Website</a>';
     }
+
     echo '          <div class="small text-muted mt-1">Links are stored as provided by admins (verified where possible).</div>';
     echo '        </div>';
     echo '      </div>';
