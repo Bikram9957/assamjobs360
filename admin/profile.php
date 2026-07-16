@@ -1,0 +1,32 @@
+<?php
+declare(strict_types=1);
+session_start();
+require_once __DIR__ . '/../lib/security.php';
+require_once __DIR__ . '/../lib/db.php';
+aj360_require_admin();
+
+$mysqli = db(); $adminId = (int)$_SESSION['aj360_admin_id']; $message = ''; $error = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    aj360_verify_csrf((string)($_POST['csrf'] ?? ''));
+    $username = trim((string)($_POST['username'] ?? '')); $displayName = trim((string)($_POST['display_name'] ?? '')); $email = trim((string)($_POST['email'] ?? '')); $newPassword = (string)($_POST['new_password'] ?? ''); $profilePhoto = '';
+    if (!preg_match('/^[A-Za-z0-9_.-]{3,50}$/', $username)) $error = 'Use a valid username.';
+    elseif ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) $error = 'Enter a valid email address.';
+    elseif ($newPassword !== '' && strlen($newPassword) < 8) $error = 'New password must contain at least 8 characters.';
+    if ($error === '' && !empty($_FILES['profile_photo']['name'])) {
+        $upload = $_FILES['profile_photo']; $mime = is_uploaded_file($upload['tmp_name']) ? mime_content_type($upload['tmp_name']) : ''; $extensions = ['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp'];
+        if (($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !isset($extensions[$mime]) || ($upload['size'] ?? 0) > 2 * 1024 * 1024) $error = 'Upload a JPG, PNG, or WEBP image up to 2 MB.';
+        else { $directory = __DIR__ . '/../assets/uploads/admin'; if (!is_dir($directory)) mkdir($directory, 0755, true); $profilePhoto = 'assets/uploads/admin/' . bin2hex(random_bytes(16)) . '.' . $extensions[$mime]; if (!move_uploaded_file($upload['tmp_name'], __DIR__ . '/../' . $profilePhoto)) $error = 'Could not upload the profile photo.'; }
+    }
+    if ($error === '') {
+        $hash = $newPassword !== '' ? password_hash($newPassword, PASSWORD_DEFAULT) : null;
+        if ($hash !== null && $profilePhoto !== '') { $stmt = $mysqli->prepare('UPDATE admins SET username=?, display_name=?, email=?, password_hash=?, profile_photo=? WHERE id=?'); $stmt->bind_param('sssssi', $username, $displayName, $email, $hash, $profilePhoto, $adminId); }
+        elseif ($hash !== null) { $stmt = $mysqli->prepare('UPDATE admins SET username=?, display_name=?, email=?, password_hash=? WHERE id=?'); $stmt->bind_param('ssssi', $username, $displayName, $email, $hash, $adminId); }
+        elseif ($profilePhoto !== '') { $stmt = $mysqli->prepare('UPDATE admins SET username=?, display_name=?, email=?, profile_photo=? WHERE id=?'); $stmt->bind_param('ssssi', $username, $displayName, $email, $profilePhoto, $adminId); }
+        else { $stmt = $mysqli->prepare('UPDATE admins SET username=?, display_name=?, email=? WHERE id=?'); $stmt->bind_param('sssi', $username, $displayName, $email, $adminId); }
+        if ($stmt->execute()) $message = 'Profile updated successfully.'; else $error = $mysqli->errno === 1062 ? 'This username already exists.' : 'Could not update profile.';
+    }
+}
+$stmt = $mysqli->prepare('SELECT id, username, display_name, email, profile_photo, created_at FROM admins WHERE id=?'); $stmt->bind_param('i', $adminId); $stmt->execute(); $admin = $stmt->get_result()->fetch_assoc();
+$csrf = aj360_csrf_token(); $initial = strtoupper(substr((string)($admin['display_name'] ?: $admin['username']), 0, 1));
+?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>My Profile | AssamJobs360 Admin</title><link href="<?= aj360_h(aj360_url('assets/vendor/bootstrap/bootstrap.min.css')) ?>" rel="stylesheet"><link href="<?= aj360_h(aj360_url('assets/admin.css')) ?>" rel="stylesheet"></head>
+<body class="admin-page"><main class="container py-4" style="max-width:820px"><div class="admin-topbar d-flex justify-content-between align-items-center"><div><div class="admin-kicker">ACCOUNT SETTINGS</div><h1>My Profile</h1></div><a class="btn btn-sm" href="<?= aj360_h(aj360_url('admin/')) ?>">Back</a></div><?php if ($message): ?><div class="alert alert-success small"><?= aj360_h($message) ?></div><?php endif; ?><?php if ($error): ?><div class="alert alert-danger small"><?= aj360_h($error) ?></div><?php endif; ?><section class="card border-0 shadow-sm"><div class="card-body p-4"><div class="d-flex align-items-center gap-3 pb-4 mb-4 border-bottom"><?php if (!empty($admin['profile_photo'])): ?><img src="<?= aj360_h(aj360_url($admin['profile_photo'])) ?>" alt="Profile photo" style="width:52px;height:52px;border-radius:50%;object-fit:cover"><?php else: ?><div style="width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:#1167d8;color:#fff;font-size:1.25rem;font-weight:700"><?= aj360_h($initial) ?></div><?php endif; ?><div><div class="fw-bold"><?= aj360_h($admin['display_name'] ?: $admin['username']) ?></div><div class="small text-muted">Administrator since <?= aj360_h(date('d M Y', strtotime((string)$admin['created_at']))) ?></div></div></div><form method="post" enctype="multipart/form-data" class="row g-3"><input type="hidden" name="csrf" value="<?= aj360_h($csrf) ?>"><div class="col-12"><label class="form-label small">Profile Photo <span class="text-muted">(JPG, PNG or WEBP; max 2 MB)</span></label><input class="form-control" type="file" name="profile_photo" accept="image/jpeg,image/png,image/webp"></div><div class="col-md-6"><label class="form-label small">Display Name</label><input class="form-control" name="display_name" value="<?= aj360_h($admin['display_name'] ?? '') ?>" placeholder="Your full name"></div><div class="col-md-6"><label class="form-label small">Email</label><input class="form-control" type="email" name="email" value="<?= aj360_h($admin['email'] ?? '') ?>" placeholder="name@example.com"></div><div class="col-12"><label class="form-label small">Username</label><input class="form-control" name="username" value="<?= aj360_h($admin['username']) ?>" required></div><div class="col-12"><hr><label class="form-label small">New Password <span class="text-muted">(leave blank to keep current password)</span></label><input class="form-control" type="password" name="new_password" minlength="8" autocomplete="new-password"></div><div class="col-12 d-grid d-md-flex justify-content-md-end"><button class="btn btn-search px-4">Save Profile</button></div></form></div></section></main><?php require __DIR__ . '/partials/session_timeout.php'; ?></body></html>
