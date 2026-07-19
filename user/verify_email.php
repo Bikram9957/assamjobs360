@@ -49,14 +49,14 @@ $csrf = aj360_csrf_token();
 <link href="<?= aj360_h(aj360_url('assets/aj360.css')) ?>" rel="stylesheet">
 <link href="<?= aj360_h(aj360_url('assets/auth-user.css')) ?>" rel="stylesheet">
 </head>
-<body>
-<main class="container py-5" style="max-width:520px">
+<body class="verify-email-page">
+<main class="container py-5 auth-shell">
     <a class="back-link" href="<?= aj360_h(aj360_url('user/register.php')) ?>">← Back</a>
-    <section class="card shadow-sm border-0 mt-3">
-        <div class="card-body p-4">
+    <section class="card shadow-sm border-0 mt-3 user-auth-card">
+        <div class="card-body p-4 p-md-5">
             <span class="eyebrow">OTP VERIFICATION</span>
-            <h1 class="h3 fw-bold mt-2">Verify your email</h1>
-            <p class="text-muted small">Enter the 6-digit OTP sent to your email.</p>
+            <h1 class="user-auth-title mt-2">Verify your email</h1>
+            <p class="text-muted small mb-4">Enter the 6-digit OTP sent to your email address.</p>
 
             <?php if ($error): ?>
                 <div class="alert alert-danger small"><?= aj360_h($error) ?></div>

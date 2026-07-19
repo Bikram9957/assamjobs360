@@ -64,7 +64,14 @@ function aj360_user_email_otp_verify_and_consume(mysqli $conn, int $userId, stri
 }
 
 function aj360_user_mark_email_verified(mysqli $conn, int $userId): void {
-    $conn->query('ALTER TABLE users ADD COLUMN email_verified_at DATETIME NULL');
+    $existing = [];
+    $result = $conn->query('SHOW COLUMNS FROM users');
+    while ($row = $result->fetch_assoc()) {
+        $existing[$row['Field']] = true;
+    }
+    if (!isset($existing['email_verified_at'])) {
+        $conn->query('ALTER TABLE users ADD COLUMN email_verified_at DATETIME NULL');
+    }
     $stmt = $conn->prepare('UPDATE users SET email_verified_at = UTC_TIMESTAMP() WHERE id=? LIMIT 1');
     $stmt->bind_param('i', $userId);
     $stmt->execute();

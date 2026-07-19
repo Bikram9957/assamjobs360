@@ -99,13 +99,13 @@ $csrf = aj360_csrf_token();
 <link href="<?= aj360_h(aj360_url('assets/auth-user.css')) ?>" rel="stylesheet">
 </head>
 <body class="register-page">
-<main class="container py-5" style="max-width:520px">
+<main class="container py-5 auth-shell">
     <a class="back-link" href="<?= aj360_h(aj360_url('/', ['p' => 'home'])) ?>">← Home</a>
-<section class="card shadow-sm border-0 mt-3 user-auth-card">
-        <div class="card-body p-4">
+    <section class="card shadow-sm border-0 mt-3 user-auth-card">
+        <div class="card-body p-4 p-md-5">
             <span class="eyebrow">CREATE ACCOUNT</span>
             <h1 class="user-auth-title mt-2">Jobseeker Registration</h1>
-            <p class="text-muted small">Register with email + password. OTP verification is required.</p>
+            <p class="text-muted small mb-4">Register with email and password. OTP verification is required before login.</p>
 
 
             <?php if ($error): ?>

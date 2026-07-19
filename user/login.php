@@ -16,8 +16,11 @@ if (!empty($_SESSION['aj360_user_id'])) {
 
 $error = '';
 $expired = isset($_GET['expired']);
+$csrf = aj360_csrf_token();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    aj360_verify_csrf((string)($_POST['csrf'] ?? ''));
+
     $usernameOrEmail = trim((string)($_POST['email'] ?? ''));
     $password = (string)($_POST['password'] ?? '');
 
@@ -34,15 +37,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $mysqli->prepare('SELECT id, email, password_hash, email_verified_at FROM users WHERE email=? LIMIT 1');
         $stmt->bind_param('s', $usernameOrEmail);
         $stmt->execute();
-        $admin = $stmt->get_result()->fetch_assoc();
+        $user = $stmt->get_result()->fetch_assoc();
 
-        if ($admin && password_verify($password, $admin['password_hash'])) {
-            $verifiedAt = (string)($admin['email_verified_at'] ?? '');
+        if ($user && password_verify($password, $user['password_hash'])) {
+            $verifiedAt = (string)($user['email_verified_at'] ?? '');
             if ($verifiedAt === '') {
                 $error = 'Please verify your email with OTP before logging in.';
-                $_SESSION['aj360_user_pending_email_verification_id'] = (int)$admin['id'];
+                $_SESSION['aj360_user_pending_email_verification_id'] = (int)$user['id'];
             } else {
-                $_SESSION['aj360_user_id'] = (int)$admin['id'];
+                $_SESSION['aj360_user_id'] = (int)$user['id'];
                 $_SESSION['aj360_user_last_activity'] = time();
                 header('Location: ' . aj360_url('/', ['p' => 'mock-tests']));
                 exit;
@@ -66,24 +69,24 @@ $csrf = aj360_csrf_token();
 <link href="<?= aj360_h(aj360_url('assets/auth-user.css')) ?>" rel="stylesheet" />
 </head>
 <body class="login-page">
-<main class="container py-5" style="max-width:520px">
+<main class="container py-5 auth-shell">
     <a class="back-link" href="<?= aj360_h(aj360_url('/', ['p' => 'home'])) ?>">← Home</a>
-<section class="card shadow-sm border-0 mt-3 user-auth-card">
-        <div class="card-body p-4">
-
+    <section class="card shadow-sm border-0 mt-3 user-auth-card">
+        <div class="card-body p-4 p-md-5">
             <span class="eyebrow">WELCOME BACK</span>
-            <h1 class="h3 fw-bold mt-2">Sign in</h1>
-            <p class="text-muted small">Login to access Mock Tests.</p>
+            <h1 class="user-auth-title mt-2">Sign in</h1>
+            <p class="text-muted small mb-4">Login to access mock tests and keep your progress in one place.</p>
 
             <?php if ($error): ?>
                 <div class="alert alert-danger small"><?= aj360_h($error) ?></div>
             <?php endif; ?>
 
             <?php if ($expired): ?>
-                <div class="alert alert-warning small">You were logged out after inactivity.</div>
+                <div class="alert alert-warning small">You were logged out after inactivity. Please sign in again.</div>
             <?php endif; ?>
 
             <form method="post">
+                <input type="hidden" name="csrf" value="<?= aj360_h($csrf) ?>" />
                 <label class="form-label small mt-2">Email</label>
                 <input name="email" type="email" class="form-control" required autocomplete="email" placeholder="you@example.com" />
 

@@ -14,6 +14,10 @@ body.verify-email-page{
     color: var(--auth-navy);
 }
 
+.auth-shell{
+    max-width:520px;
+}
+
 .user-auth-card{
     border-radius:14px;
     box-shadow:0 10px 25px rgba(16,42,67,.07);
@@ -77,4 +81,8 @@ body.verify-email-page .user-auth-card{
 /* Back link */
 .back-link{color:var(--auth-blue);font-size:.8rem;font-weight:900;text-decoration:none;}
 .back-link:hover{text-decoration:underline;}
+
+.auth-shell .user-auth-card{
+    overflow:hidden;
+}
 
