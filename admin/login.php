@@ -38,12 +38,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $admin = $res->fetch_assoc();
 
         if ($admin && password_verify($password, $admin['password_hash'])) {
-            $_SESSION['aj360_admin_id'] = (int)$admin['id'];
+            $adminId = (int)$admin['id'];
+            $verifiedAt = null;
+            if (isset($admin['email_verified_at'])) {
+                $verifiedAt = $admin['email_verified_at'];
+            }
+
+            // If column exists and not verified, block login.
+            // If column doesn't exist, code will just login as before.
+            if (array_key_exists('email_verified_at', $admin) && ($verifiedAt === null || $verifiedAt === '')) {
+                header('Location: ' . aj360_url('admin/verify_email.php'));
+                exit;
+            }
+
+            $_SESSION['aj360_admin_id'] = $adminId;
             $_SESSION['aj360_admin_last_activity'] = time();
-            aj360_log_admin_login($mysqli, (int)$admin['id']);
+            aj360_log_admin_login($mysqli, $adminId);
             header('Location: ' . aj360_url('admin/'));
             exit;
         }
+
 
         $error = 'Invalid credentials';
     }

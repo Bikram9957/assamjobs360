@@ -2,7 +2,10 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/security.php';
+require_once __DIR__ . '/../lib/user_security.php';
+aj360_require_user();
 $metaTitle = 'Free Assam Mock Tests | AssamJobs360';
+
 $metaDescription = 'Practice Assam government exam questions with a timer, answer review and score analysis.';
 $mysqli = db(); $testId = (int)($_GET['test'] ?? 0); $view = (string)($_GET['view'] ?? 'list');
 

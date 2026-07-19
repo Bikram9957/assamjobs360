@@ -1,8 +1,11 @@
-# TODO
-
-- [ ] Implement forgot-password email sending for admins
-- [ ] Add mailer helper (PHP mail / PHPMailer) and config entries
-- [ ] Update admin/forgot_password.php to send reset link to admins.email and stop displaying generated link
-- [ ] Update admin/register.php to capture admins.email and save into admins table
-- [ ] Quick verification: ensure reset link still works with selector+token
+- [x] Admin registration/login already existed
+- [x] Added public DB columns/table init for users email verification OTP
+- [x] Implemented jobseeker registration with password + email OTP (`user/register.php`)
+- [x] Implemented jobseeker email OTP verification (`user/verify_email.php`)
+- [x] Implemented jobseeker login (blocked until OTP verified) (`user/login.php`)
+- [x] Implemented user logout (`user/logout.php`)
+- [x] Protected Mock Tests page (requires login) (`templates/mock_tests.php`)
+- [x] Updated public header to show Login/Register/Logout and conditional Admin (`templates/partials/header.php`)
+- [x] Added user auth rate-limit + session timeout + OTP config (`config/config.php`)
+- [x] Added basic styling for public auth pages (`assets/aj360.css`)
 

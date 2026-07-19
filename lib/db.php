@@ -36,6 +36,9 @@ function db(): mysqli {
     aj360_ensure_admin_profile_columns($conn);
     aj360_ensure_admin_login_log_table($conn);
     aj360_ensure_admin_password_reset_table($conn);
+    aj360_ensure_admin_email_otp_table($conn);
+    aj360_ensure_public_user_columns($conn);
+    aj360_ensure_user_email_otp_table($conn);
     return $conn;
 }
 
@@ -114,4 +117,60 @@ function aj360_ensure_job_detail_columns(mysqli $conn): void {
         if (!isset($existing[$name])) $conn->query("ALTER TABLE jobs ADD COLUMN `$name` $definition");
     }
 }
+
+/** Lightweight migration for admin email OTP verification. */
+function aj360_ensure_admin_email_otp_table(mysqli $conn): void {
+    static $checked = false;
+    if ($checked) return;
+    $checked = true;
+
+    // OTP is one-time; store only token hash.
+    $conn->query('CREATE TABLE IF NOT EXISTS admin_email_otps (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        admin_id INT NOT NULL,
+        otp_hash CHAR(64) NOT NULL,
+        expires_at DATETIME NOT NULL,
+        used_at DATETIME NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_admin_email_otps_admin_id (admin_id),
+        INDEX idx_admin_email_otps_expires_at (expires_at),
+        FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+}
+
+/** Lightweight migration for public user email verification. */
+function aj360_ensure_public_user_columns(mysqli $conn): void {
+    static $checked = false;
+    if ($checked) return;
+    $checked = true;
+
+    $existing = [];
+    $result = $conn->query('SHOW COLUMNS FROM users');
+    while ($row = $result->fetch_assoc()) $existing[$row['Field']] = true;
+
+    if (!isset($existing['email_verified_at'])) {
+        $conn->query('ALTER TABLE users ADD COLUMN email_verified_at DATETIME NULL');
+    }
+}
+
+/** Lightweight migration for user email OTP verification. */
+function aj360_ensure_user_email_otp_table(mysqli $conn): void {
+    static $checked = false;
+    if ($checked) return;
+    $checked = true;
+
+    $conn->query('CREATE TABLE IF NOT EXISTS users_email_otps (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        otp_hash CHAR(64) NOT NULL,
+        expires_at DATETIME NOT NULL,
+        used_at DATETIME NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_users_email_otps_user_id (user_id),
+        INDEX idx_users_email_otps_expires_at (expires_at),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+}
+
+
 

@@ -253,14 +253,61 @@ function aj360_send_email(string $to, string $subject, string $htmlBody, ?string
     return mail($to, $subjectSafe, $htmlBody, implode("\r\n", $headers));
 }
 
-function aj360_admin_password_reset_consume(mysqli $conn, int $resetId, int $adminId, string $newPassword): bool {
+function aj360_admin_email_otp_create_record(mysqli $conn, int $adminId, int $ttlSeconds): array {
+    $otp = (string)random_int(100000, 999999); // 6-digit
+    $otpHash = hash('sha256', $otp);
 
+    $expiresAt = (new DateTimeImmutable('now', new DateTimeZone('UTC')))
+        ->modify(sprintf('+%d seconds', max(60, $ttlSeconds)))
+        ->format('Y-m-d H:i:s');
+
+    $stmt = $conn->prepare('INSERT INTO admin_email_otps (admin_id, otp_hash, expires_at) VALUES (?, ?, ?)');
+    $stmt->bind_param('iss', $adminId, $otpHash, $expiresAt);
+    $stmt->execute();
+
+    return ['otp' => $otp, 'expires_at' => $expiresAt];
+}
+
+function aj360_admin_email_otp_verify_and_consume(mysqli $conn, int $adminId, string $otp): bool {
+    $otp = trim($otp);
+    if ($otp === '' || !preg_match('/^\d{6}$/', $otp)) return false;
+
+    $otpHash = hash('sha256', $otp);
+
+    $stmt = $conn->prepare('SELECT id, expires_at, used_at FROM admin_email_otps WHERE admin_id=? AND otp_hash=? ORDER BY id DESC LIMIT 1');
+    $stmt->bind_param('is', $adminId, $otpHash);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+
+    if (!$row) return false;
+    if (!empty($row['used_at'])) return false;
+
+    $expiresTs = strtotime((string)$row['expires_at']);
+    if ($expiresTs === false || time() > $expiresTs) return false;
+
+    $consume = $conn->prepare('UPDATE admin_email_otps SET used_at = UTC_TIMESTAMP() WHERE id=? AND used_at IS NULL');
+    $consume->bind_param('i', (int)$row['id']);
+    $consume->execute();
+
+    return $consume->affected_rows === 1;
+}
+
+function aj360_admin_mark_email_verified(mysqli $conn, int $adminId): void {
+    // Try column exists; if not, silently skip.
+    $conn->query("ALTER TABLE admins ADD COLUMN email_verified_at DATETIME NULL");
+    $stmt = $conn->prepare('UPDATE admins SET email_verified_at = UTC_TIMESTAMP() WHERE id=? LIMIT 1');
+    $stmt->bind_param('i', $adminId);
+    $stmt->execute();
+}
+
+function aj360_admin_password_reset_consume(mysqli $conn, int $resetId, int $adminId, string $newPassword): bool {
     $hash = password_hash($newPassword, PASSWORD_DEFAULT);
 
     $conn->begin_transaction();
     try {
         $stmt1 = $conn->prepare('UPDATE admin_password_resets SET used_at = UTC_TIMESTAMP() WHERE id=? AND admin_id=? AND used_at IS NULL');
         $stmt1->bind_param('ii', $resetId, $adminId);
+
         $stmt1->execute();
         if ($stmt1->affected_rows !== 1) {
             $conn->rollback();

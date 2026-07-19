@@ -13,8 +13,19 @@
         <a class="text-decoration-none" href="<?= aj360_h(aj360_url('/', ['p' => 'jobs'])) ?>">Latest Jobs</a>
         <a class="text-decoration-none" href="<?= aj360_h(aj360_url('/', ['p' => 'mock-tests'])) ?>">Mock Tests</a>
         <a class="text-decoration-none" href="<?= aj360_h(aj360_url('/', ['p' => 'current-affairs'])) ?>">Current Affairs</a>
-        <a class="text-decoration-none" href="<?= aj360_h(aj360_url('admin/')) ?>">Admin</a>
+
+        <?php if (!empty($_SESSION['aj360_user_id'])): ?>
+          <a class="text-decoration-none" href="<?= aj360_h(aj360_url('user/logout.php')) ?>">Logout</a>
+        <?php else: ?>
+          <a class="text-decoration-none" href="<?= aj360_h(aj360_url('user/login.php')) ?>">Login</a>
+          <a class="text-decoration-none" href="<?= aj360_h(aj360_url('user/register.php')) ?>">Register</a>
+        <?php endif; ?>
+
+        <?php if (!empty($_SESSION['aj360_admin_id'])): ?>
+          <a class="text-decoration-none admin-link" href="<?= aj360_h(aj360_url('admin/')) ?>">Admin</a>
+        <?php endif; ?>
       </nav>
+
 
       <button class="menu-toggle d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#aj360Offcanvas">
         ☰
@@ -31,8 +42,19 @@
       <a class="text-decoration-none" href="<?= aj360_h(aj360_url('/', ['p' => 'jobs'])) ?>">Latest Jobs</a>
       <a class="text-decoration-none" href="<?= aj360_h(aj360_url('/', ['p' => 'mock-tests'])) ?>">Mock Tests</a>
       <a class="text-decoration-none" href="<?= aj360_h(aj360_url('/', ['p' => 'current-affairs'])) ?>">Current Affairs</a>
-      <a class="text-decoration-none" href="<?= aj360_h(aj360_url('admin/')) ?>">Admin</a>
+
+      <?php if (!empty($_SESSION['aj360_user_id'])): ?>
+        <a class="text-decoration-none" href="<?= aj360_h(aj360_url('user/logout.php')) ?>">Logout</a>
+      <?php else: ?>
+        <a class="text-decoration-none" href="<?= aj360_h(aj360_url('user/login.php')) ?>">Login</a>
+        <a class="text-decoration-none" href="<?= aj360_h(aj360_url('user/register.php')) ?>">Register</a>
+      <?php endif; ?>
+
+      <?php if (!empty($_SESSION['aj360_admin_id'])): ?>
+        <a class="text-decoration-none admin-link" href="<?= aj360_h(aj360_url('admin/')) ?>">Admin</a>
+      <?php endif; ?>
     </div>
+
   </div>
 </header>
 
