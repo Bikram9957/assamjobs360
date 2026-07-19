@@ -40,16 +40,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = $stmt->get_result()->fetch_assoc();
 
         if ($user && password_verify($password, $user['password_hash'])) {
-            $verifiedAt = (string)($user['email_verified_at'] ?? '');
-            if ($verifiedAt === '') {
-                $error = 'Please verify your email with OTP before logging in.';
-                $_SESSION['aj360_user_pending_email_verification_id'] = (int)$user['id'];
-            } else {
-                $_SESSION['aj360_user_id'] = (int)$user['id'];
-                $_SESSION['aj360_user_last_activity'] = time();
-                header('Location: ' . aj360_url('/', ['p' => 'mock-tests']));
-                exit;
-            }
+            $_SESSION['aj360_user_id'] = (int)$user['id'];
+            $_SESSION['aj360_user_last_activity'] = time();
+            header('Location: ' . aj360_url('/', ['p' => 'mock-tests']));
+            exit;
         } else {
             $error = 'Invalid credentials';
         }

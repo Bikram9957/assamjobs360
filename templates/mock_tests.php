@@ -14,7 +14,17 @@ if ($view === 'result' && $_SERVER['REQUEST_METHOD'] === 'POST' && $testId > 0) 
     $stmt = $mysqli->prepare('SELECT q.id, q.question_text, a.correct_option_ids, a.explanation FROM questions q JOIN answers a ON a.question_id = q.id WHERE q.mock_test_id = ?'); $stmt->bind_param('i', $testId); $stmt->execute(); $questions = $stmt->get_result()->fetch_all(MYSQLI_ASSOC); $submitted = $_POST['answer'] ?? [];
     $correct = 0; $wrong = 0; $unanswered = 0;
     foreach ($questions as &$question) { $selected = isset($submitted[$question['id']]) ? (int)$submitted[$question['id']] : 0; $ids = json_decode((string)$question['correct_option_ids'], true) ?: []; $question['selected'] = $selected; $question['correct'] = $selected > 0 && in_array($selected, array_map('intval', $ids), true); if (!$selected) $unanswered++; elseif ($question['correct']) $correct++; else $wrong++; } unset($question); $score = $correct - ($wrong * .25); ob_start(); ?>
-    <div class="test-page py-4"><a class="back-link" href="<?= aj360_h(aj360_url('/', ['p'=>'mock-tests'])) ?>">&larr; All mock tests</a><section class="score-panel"><span>Your Score</span><strong><?= number_format($score, 2) ?></strong><p><?= $correct ?> correct &middot; <?= $wrong ?> wrong &middot; <?= $unanswered ?> unanswered</p><a class="btn btn-light btn-sm" href="<?= aj360_h(aj360_url('/', ['p'=>'mock-tests','test'=>$testId])) ?>">Retake test</a></section><h1 class="test-title">Answer Analysis</h1><?php foreach ($questions as $index => $question): ?><article class="analysis-card <?= $question['correct'] ? 'is-correct' : ($question['selected'] ? 'is-wrong' : '') ?>"><b>Question <?= $index + 1 ?></b><p><?= nl2br(aj360_h($question['question_text'])) ?></p><small><?= $question['correct'] ? 'Correct answer' : 'Incorrect or unanswered' ?><?= $question['explanation'] ? ' — '.aj360_h($question['explanation']) : '' ?></small></article><?php endforeach; ?></div>
+    <?php
+    $userId = (int)($_SESSION['aj360_user_id'] ?? 0);
+    if ($userId > 0) {
+        $totalQuestions = count($questions);
+        $percentile = 0.0;
+        $stmt = $mysqli->prepare('INSERT INTO results (user_id, mock_test_id, score, total_questions, percentile) VALUES (?, ?, ?, ?, ?)');
+        $stmt->bind_param('iidid', $userId, $testId, $score, $totalQuestions, $percentile);
+        $stmt->execute();
+    }
+    ?>
+    <div class="test-page py-4"><a class="back-link" href="<?= aj360_h(aj360_url('/', ['p'=>'mock-tests'])) ?>">&larr; All mock tests</a><section class="score-panel"><span>Your Score</span><strong><?= number_format($score, 2) ?></strong><p><?= $correct ?> correct &middot; <?= $wrong ?> wrong &middot; <?= $unanswered ?> unanswered</p><div class="d-flex justify-content-center gap-2 flex-wrap"><a class="btn btn-light btn-sm" href="<?= aj360_h(aj360_url('/', ['p'=>'mock-tests','test'=>$testId])) ?>">Retake test</a><a class="btn btn-outline-light btn-sm" href="<?= aj360_h(aj360_url('user/profile.php')) ?>">View profile</a></div></section><h1 class="test-title">Answer Analysis</h1><?php foreach ($questions as $index => $question): ?><article class="analysis-card <?= $question['correct'] ? 'is-correct' : ($question['selected'] ? 'is-wrong' : '') ?>"><b>Question <?= $index + 1 ?></b><p><?= nl2br(aj360_h($question['question_text'])) ?></p><small><?= $question['correct'] ? 'Correct answer' : 'Incorrect or unanswered' ?><?= $question['explanation'] ? ' — '.aj360_h($question['explanation']) : '' ?></small></article><?php endforeach; ?></div>
     <?php $content = ob_get_clean(); require __DIR__ . '/layout.php'; exit;
 }
 

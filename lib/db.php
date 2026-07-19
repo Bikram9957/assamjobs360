@@ -148,6 +148,12 @@ function aj360_ensure_public_user_columns(mysqli $conn): void {
     $result = $conn->query('SHOW COLUMNS FROM users');
     while ($row = $result->fetch_assoc()) $existing[$row['Field']] = true;
 
+    if (!isset($existing['name'])) {
+        $conn->query('ALTER TABLE users ADD COLUMN name VARCHAR(120) NULL AFTER id');
+        $conn->query("UPDATE users SET name = SUBSTRING_INDEX(email, '@', 1) WHERE name IS NULL OR name = ''");
+        $conn->query('ALTER TABLE users MODIFY name VARCHAR(120) NOT NULL');
+    }
+
     if (!isset($existing['email_verified_at'])) {
         $conn->query('ALTER TABLE users ADD COLUMN email_verified_at DATETIME NULL');
     }
@@ -171,6 +177,5 @@ function aj360_ensure_user_email_otp_table(mysqli $conn): void {
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
 }
-
 
 

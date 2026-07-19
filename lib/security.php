@@ -31,7 +31,8 @@ function aj360_safe_url(?string $url): string {
 function aj360_base_path(): string {
     $script = str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? '/index.php'));
     $directory = rtrim(str_replace('\\', '/', dirname($script)), '/');
-    if (preg_match('#/admin$#', $directory)) {
+    $leaf = basename($directory);
+    if (in_array($leaf, ['admin', 'user', 'api'], true)) {
         $directory = rtrim(dirname($directory), '/');
     }
     return $directory === '/' || $directory === '.' ? '' : $directory;
@@ -325,7 +326,6 @@ function aj360_admin_password_reset_consume(mysqli $conn, int $resetId, int $adm
         return false;
     }
 }
-
 
 
 

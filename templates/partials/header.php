@@ -15,6 +15,7 @@
         <a class="text-decoration-none" href="<?= aj360_h(aj360_url('/', ['p' => 'current-affairs'])) ?>">Current Affairs</a>
 
         <?php if (!empty($_SESSION['aj360_user_id'])): ?>
+          <a class="text-decoration-none" href="<?= aj360_h(aj360_url('user/profile.php')) ?>">Profile</a>
           <a class="text-decoration-none" href="<?= aj360_h(aj360_url('user/logout.php')) ?>">Logout</a>
         <?php else: ?>
           <a class="text-decoration-none" href="<?= aj360_h(aj360_url('user/login.php')) ?>">Login</a>
@@ -44,6 +45,7 @@
       <a class="text-decoration-none" href="<?= aj360_h(aj360_url('/', ['p' => 'current-affairs'])) ?>">Current Affairs</a>
 
       <?php if (!empty($_SESSION['aj360_user_id'])): ?>
+        <a class="text-decoration-none" href="<?= aj360_h(aj360_url('user/profile.php')) ?>">Profile</a>
         <a class="text-decoration-none" href="<?= aj360_h(aj360_url('user/logout.php')) ?>">Logout</a>
       <?php else: ?>
         <a class="text-decoration-none" href="<?= aj360_h(aj360_url('user/login.php')) ?>">Login</a>

@@ -26,12 +26,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!aj360_consume_rate_limit($bucket, $maxAttempts, $windowSeconds)) {
         $error = 'Too many signup attempts. Please try again after some time.';
     } else {
+        $name = trim((string)($_POST['name'] ?? ''));
         $email = strtolower(trim((string)($_POST['email'] ?? '')));
         $phone = trim((string)($_POST['phone'] ?? ''));
         $password = (string)($_POST['password'] ?? '');
         $confirmPassword = (string)($_POST['confirm_password'] ?? '');
 
-        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        if ($name === '') {
+            $error = 'Enter your name.';
+        } elseif ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $error = 'Enter a valid email address.';
         } elseif ($password === '' || strlen($password) < 8) {
             $error = 'Password must contain at least 8 characters.';
@@ -45,42 +48,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($error === '') {
             $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+            $phoneValue = $phone === '' ? null : $phone;
 
-            $mysqli->begin_transaction();
             try {
-                $stmt = $mysqli->prepare('INSERT INTO users (email, phone, password_hash) VALUES (?, ?, ?)');
-                $stmt->bind_param('sss', $email, $phone === '' ? null : $phone, $passwordHash);
+                $stmt = $mysqli->prepare('INSERT INTO users (name, email, phone, password_hash) VALUES (?, ?, ?, ?)');
+                $stmt->bind_param('ssss', $name, $email, $phoneValue, $passwordHash);
                 $stmt->execute();
 
                 $userId = (int)$mysqli->insert_id;
+                $_SESSION['aj360_user_id'] = $userId;
+                $_SESSION['aj360_user_last_activity'] = time();
 
-                // OTP flow (mandatory)
-                $otpTtl = (int)($cfg['USER_EMAIL_OTP_TTL_SECONDS'] ?? 900);
-                $otpRateMax = (int)($cfg['USER_EMAIL_OTP_RATE_LIMIT_MAX_REQUESTS'] ?? 5);
-                $otpRateWindow = (int)($cfg['USER_EMAIL_OTP_RATE_LIMIT_WINDOW_SECONDS'] ?? 3600);
-
-                $bucketOtp = 'user-email-otp|' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown') . '|' . strtolower($email);
-                if (!aj360_consume_rate_limit($bucketOtp, $otpRateMax, $otpRateWindow)) {
-                    throw new RuntimeException('OTP rate limited');
-                }
-
-                $otpRow = aj360_user_email_otp_create_record($mysqli, $userId, $otpTtl);
-                $otp = $otpRow['otp'];
-
-                $subject = 'AssamJobs360 Email Verification OTP';
-                $htmlBody = 'Your verification OTP is: <b>' . aj360_h($otp) . '</b><br><br>'
-                    . 'This OTP will expire in ' . max(1, (int)($otpTtl / 60)) . ' minutes.';
-
-                aj360_send_email($email, $subject, $htmlBody);
-
-                $_SESSION['aj360_user_pending_email_verification_id'] = $userId;
-
-                $mysqli->commit();
-                header('Location: ' . aj360_url('user/verify_email.php'));
+                header('Location: ' . aj360_url('/', ['p' => 'mock-tests']));
                 exit;
             } catch (Throwable $e) {
-                $mysqli->rollback();
-                $error = 'Unable to create your account. Please try again.';
+                if (str_contains(strtolower($e->getMessage()), 'duplicate')) {
+                    $error = 'This email is already registered. Please log in instead.';
+                } else {
+                    $error = 'Unable to create your account. Please try again.';
+                    if (defined('AJ360_DEBUG') && AJ360_DEBUG) {
+                        $error .= ' ' . $e->getMessage();
+                    }
+                }
             }
         }
     }
@@ -105,7 +94,7 @@ $csrf = aj360_csrf_token();
         <div class="card-body p-4 p-md-5">
             <span class="eyebrow">CREATE ACCOUNT</span>
             <h1 class="user-auth-title mt-2">Jobseeker Registration</h1>
-            <p class="text-muted small mb-4">Register with email and password. OTP verification is required before login.</p>
+            <p class="text-muted small mb-4">Register with email and password to start using your account right away.</p>
 
 
             <?php if ($error): ?>
@@ -114,6 +103,9 @@ $csrf = aj360_csrf_token();
 
             <form method="post">
                 <input type="hidden" name="csrf" value="<?= aj360_h($csrf) ?>">
+
+                <label class="form-label small mt-2">Name</label>
+                <input name="name" type="text" class="form-control" required autocomplete="name" placeholder="Your full name">
 
                 <label class="form-label small mt-2">Email</label>
                 <input name="email" type="email" class="form-control" required autocomplete="email" placeholder="you@example.com">
