@@ -14,42 +14,73 @@ $qualification = trim((string)($_GET['qualification'] ?? ''));
 
 ob_start();
 ?>
-<div class="py-3">
-  <div class="d-flex align-items-center justify-content-between mb-3">
-    <div>
-      <h1 class="h4 fw-bold mb-1">Latest Jobs</h1>
-      <div class="text-muted small">Quick eligibility + verified links</div>
+<div class="jobs-page py-3">
+  <section class="jobs-hero">
+    <div class="jobs-hero-copy">
+      <span class="eyebrow">LATEST VACANCIES</span>
+      <h1>Find Assam government jobs with less scrolling and more clarity.</h1>
+      <p>Browse verified job notifications, deadlines, eligibility, and official application links in a cleaner, easier-to-read layout.</p>
+      <div class="jobs-hero-badges">
+        <span>Official links</span>
+        <span>Deadline first</span>
+        <span>Mobile friendly</span>
+      </div>
     </div>
-  </div>
+    <div class="jobs-hero-card">
+      <div class="jobs-hero-stat">
+        <strong>60</strong>
+        <span>Latest listings per page</span>
+      </div>
+      <div class="jobs-hero-stat">
+        <strong>4</strong>
+        <span>Smart filters available</span>
+      </div>
+      <div class="jobs-hero-stat">
+        <strong>100%</strong>
+        <span>Official links highlighted</span>
+      </div>
+    </div>
+  </section>
 
-  <div class="row g-3">
-    <div class="col-12 col-md-4">
-      <div class="card rounded-4 shadow-sm">
-        <div class="card-body">
-          <form method="get" action="<?= aj360_h(aj360_url()) ?>">
-            <input type="hidden" name="p" value="jobs" />
-
-            <label class="form-label small">Department</label>
-            <input name="department" class="form-control" value="<?= aj360_h($department) ?>" />
-
-            <label class="form-label small mt-2">Category</label>
-            <input name="category" class="form-control" value="<?= aj360_h($category) ?>" />
-
-            <label class="form-label small mt-2">District</label>
-            <input name="district" class="form-control" value="<?= aj360_h($district) ?>" />
-
-            <label class="form-label small mt-2">Qualification</label>
-            <input name="qualification" class="form-control" value="<?= aj360_h($qualification) ?>" />
-
-            <div class="d-grid mt-3">
-              <button class="btn btn-primary">Apply Filters</button>
-            </div>
-          </form>
+  <div class="row g-4 mt-1">
+    <div class="col-12 col-lg-4">
+      <div class="jobs-filter-card">
+        <div class="section-heading mb-3">
+          <div>
+            <span class="eyebrow">FILTER JOBS</span>
+            <h2>Refine results</h2>
+          </div>
         </div>
+        <form method="get" action="<?= aj360_h(aj360_url()) ?>" class="jobs-filter-form">
+          <input type="hidden" name="p" value="jobs" />
+
+          <label class="form-label small">Department</label>
+          <input name="department" class="form-control" value="<?= aj360_h($department) ?>" placeholder="e.g. Police" />
+
+          <label class="form-label small mt-3">Category</label>
+          <input name="category" class="form-control" value="<?= aj360_h($category) ?>" placeholder="e.g. Group D" />
+
+          <label class="form-label small mt-3">District</label>
+          <input name="district" class="form-control" value="<?= aj360_h($district) ?>" placeholder="e.g. Guwahati" />
+
+          <label class="form-label small mt-3">Qualification</label>
+          <input name="qualification" class="form-control" value="<?= aj360_h($qualification) ?>" placeholder="e.g. HSLC" />
+
+          <div class="d-grid mt-4">
+            <button class="btn btn-search">Apply Filters</button>
+          </div>
+        </form>
       </div>
     </div>
 
-    <div class="col-12 col-md-8">
+    <div class="col-12 col-lg-8">
+      <div class="jobs-results-head">
+        <div>
+          <span class="eyebrow">OPEN POSITIONS</span>
+          <h2>Latest jobs</h2>
+        </div>
+      </div>
+
       <div class="row g-3">
         <?php
         $mysqli = db();
@@ -71,23 +102,27 @@ ob_start();
         $res = $stmt->get_result();
 
         if ($res->num_rows === 0) {
-            echo '<div class="col-12"><div class="alert alert-warning mb-0">No jobs found for these filters.</div></div>';
+            echo '<div class="col-12"><div class="empty-jobs">No jobs found for these filters.</div></div>';
         } else {
             while ($row = $res->fetch_assoc()) {
                 echo '<div class="col-12">';
-                echo '  <div class="card rounded-4 shadow-sm">';
-                echo '    <div class="card-body d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">';
-                echo '      <div>'; 
-                echo '        <div class="fw-semibold">'.aj360_h($row['job_name']).'</div>';
-                echo '        <div class="text-muted small">'.aj360_h($row['department']).' • '.aj360_h($row['qualification']).'</div>';
-                echo '        <div class="small">Age Limit: '.aj360_h($row['age_limit']).' | Salary: '.aj360_h($row['salary']).'</div>';
+                echo '  <article class="job-list-card">';
+                echo '    <div class="job-list-top">';
+                echo '      <div class="job-list-badges">';
+                echo '        <span>'.aj360_h($row['department']).'</span>';
+                echo '        <span>'.aj360_h($row['qualification']).'</span>';
                 echo '      </div>';
-                echo '      <div class="text-md-end">';
-                echo '        <div class="fw-semibold text-danger">Last Date: '.($row['last_date'] ? aj360_h($row['last_date']) : 'N/A').'</div>';
-                echo '        <a class="btn btn-primary btn-sm mt-2" href="'.aj360_h(aj360_url('/', ['p' => 'job', 'job_slug' => (string)$row['job_slug']])).'">Apply / Details</a>';
-                echo '      </div>';
+                echo '      <div class="job-list-deadline">'.($row['last_date'] ? 'Last date: '.aj360_h($row['last_date']) : 'Last date: TBA').'</div>';
                 echo '    </div>';
-                echo '  </div>';
+                echo '    <h3>'.aj360_h($row['job_name']).'</h3>';
+                echo '    <div class="job-list-meta">';
+                echo '      <span>Age: <b>'.aj360_h($row['age_limit'] ?: 'As per rules').'</b></span>';
+                echo '      <span>Salary: <b>'.aj360_h($row['salary'] ?: 'As per rules').'</b></span>';
+                echo '    </div>';
+                echo '    <div class="job-list-actions">';
+                echo '      <a class="btn btn-search btn-sm" href="'.aj360_h(aj360_url('/', ['p' => 'job', 'job_slug' => (string)$row['job_slug']])).'">View details</a>';
+                echo '    </div>';
+                echo '  </article>';
                 echo '</div>';
             }
         }

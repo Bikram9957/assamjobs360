@@ -14,6 +14,19 @@ if (!empty($_SESSION['aj360_user_id'])) {
 
 $mysqli = db();
 $error = '';
+$indiaStates = [
+    'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh',
+    'Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland',
+    'Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal',
+    'Andaman and Nicobar Islands','Chandigarh','Dadra and Nagar Haveli and Daman and Diu','Delhi','Jammu and Kashmir',
+    'Ladakh','Lakshadweep','Puducherry'
+];
+$assamDistricts = [
+    'Baksa','Barpeta','Bishwanath','Bongaigaon','Cachar','Charaideo','Chirang','Darrang','Dhemaji','Dhubri',
+    'Dibrugarh','Dima Hasao','Goalpara','Golaghat','Hailakandi','Hojai','Jorhat','Kamrup','Kamrup Metropolitan',
+    'Karbi Anglong','Karimganj','Kokrajhar','Lakhimpur','Majuli','Morigaon','Nagaon','Nalbari','Sivasagar',
+    'Sonitpur','South Salmara-Mankachar','Tinsukia','Udalguri','West Karbi Anglong'
+];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     aj360_verify_csrf((string)($_POST['csrf'] ?? ''));
@@ -29,6 +42,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = trim((string)($_POST['name'] ?? ''));
         $email = strtolower(trim((string)($_POST['email'] ?? '')));
         $phone = trim((string)($_POST['phone'] ?? ''));
+        $address = trim((string)($_POST['address'] ?? ''));
+        $state = trim((string)($_POST['state'] ?? ''));
+        $district = trim((string)($_POST['district'] ?? ''));
+        $pinCode = trim((string)($_POST['pin_code'] ?? ''));
         $password = (string)($_POST['password'] ?? '');
         $confirmPassword = (string)($_POST['confirm_password'] ?? '');
 
@@ -40,6 +57,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Password must contain at least 8 characters.';
         } elseif (!hash_equals($password, $confirmPassword)) {
             $error = 'Passwords do not match.';
+        } elseif ($address === '') {
+            $error = 'Enter your address.';
+        } elseif ($state === '') {
+            $error = 'Select your state.';
+        } elseif ($district === '') {
+            $error = 'Select your district.';
+        } elseif ($pinCode === '' || !preg_match('/^\d{6}$/', $pinCode)) {
+            $error = 'Enter a valid 6-digit pin code.';
         }
 
         if ($error === '' && $phone !== '' && !preg_match('/^[0-9+\-\s]{6,30}$/', $phone)) {
@@ -49,10 +74,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($error === '') {
             $passwordHash = password_hash($password, PASSWORD_DEFAULT);
             $phoneValue = $phone === '' ? null : $phone;
+            $districtValue = $state === 'Assam' ? $district : $district;
 
             try {
-                $stmt = $mysqli->prepare('INSERT INTO users (name, email, phone, password_hash) VALUES (?, ?, ?, ?)');
-                $stmt->bind_param('ssss', $name, $email, $phoneValue, $passwordHash);
+                $stmt = $mysqli->prepare('INSERT INTO users (name, email, phone, address, state, district, pin_code, password_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+                $stmt->bind_param('ssssssss', $name, $email, $phoneValue, $address, $state, $districtValue, $pinCode, $passwordHash);
                 $stmt->execute();
 
                 $userId = (int)$mysqli->insert_id;
@@ -113,6 +139,34 @@ $csrf = aj360_csrf_token();
                 <label class="form-label small mt-3">Phone (optional)</label>
                 <input name="phone" type="text" class="form-control" autocomplete="tel" placeholder="+91 9xxxxxxxxx">
 
+                <label class="form-label small mt-3">Address</label>
+                <textarea name="address" class="form-control" required rows="2" placeholder="House no, street, area"></textarea>
+
+                <div class="row g-3 mt-0">
+                    <div class="col-12 col-md-6">
+                        <label class="form-label small mt-3">State</label>
+                        <select name="state" id="stateSelect" class="form-select" required>
+                            <option value="">Select state</option>
+                            <?php foreach ($indiaStates as $st): ?>
+                                <option value="<?= aj360_h($st) ?>"><?= aj360_h($st) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label small mt-3">District</label>
+                        <select id="districtSelect" class="form-select">
+                            <option value="">Select district</option>
+                            <?php foreach ($assamDistricts as $dist): ?>
+                                <option value="<?= aj360_h($dist) ?>"><?= aj360_h($dist) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <input id="districtText" type="text" class="form-control d-none mt-1" placeholder="Enter district">
+                    </div>
+                </div>
+
+                <label class="form-label small mt-3">Pin Code</label>
+                <input name="pin_code" type="text" class="form-control" required inputmode="numeric" maxlength="6" placeholder="781001">
+
                 <label class="form-label small mt-3">Password</label>
                 <input name="password" type="password" class="form-control" required minlength="8" autocomplete="new-password">
 
@@ -130,6 +184,30 @@ $csrf = aj360_csrf_token();
         </div>
     </section>
 </main>
+<script>
+(() => {
+    const stateSelect = document.getElementById('stateSelect');
+    const districtSelect = document.getElementById('districtSelect');
+    const districtText = document.getElementById('districtText');
+
+    function syncDistrictField() {
+        const isAssam = stateSelect.value === 'Assam';
+        districtSelect.classList.toggle('d-none', !isAssam);
+        districtText.classList.toggle('d-none', isAssam);
+        districtSelect.name = isAssam ? 'district' : '';
+        districtText.name = isAssam ? '' : 'district';
+        districtSelect.required = isAssam;
+        districtText.required = !isAssam;
+    }
+
+    stateSelect.addEventListener('change', () => {
+        if (stateSelect.value !== 'Assam') districtText.value = '';
+        syncDistrictField();
+    });
+
+    syncDistrictField();
+})();
+</script>
 </body>
 </html>
 
